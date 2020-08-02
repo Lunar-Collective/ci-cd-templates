@@ -10,17 +10,76 @@ build app:
     # UNCOMMENT THE FOLLOWING LINE AND UPDATE IF BUILD DIR IS NOT /PUBLIC
     #- mv dist public
 
-deploy app:
+
+deploy_review:
+  except:
+    - master
+  dependencies: 
+    - build app
+  stage: deploy
+  image: docker:latest
+  environment:
+    name: staging
+  script:
+    # Install CA certs, openssl to https downloads, python for gcloud sdk
+    - apk add --update make ca-certificates openssl python3
+    - update-ca-certificates
+
+    # Download and install Google Cloud SDK
+    - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
+    - tar zxvf google-cloud-sdk.tar.gz && ./google-cloud-sdk/install.sh --usage-reporting=false --path-update=true
+    - PATH="google-cloud-sdk/bin:${PATH}"
+    - BUCKET_NAME=${$CI_COMMIT_REF_NAME/\//_}
+    - gcloud --quiet components update
+
+    - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
+    - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+    - gsutil mb -p $GCP_PROJECT_ID -c standard -l us-east1 -b on gs://$BUCKET_NAME
+    - gsutil iam ch allUsers:objectViewer gs://$BUCKET_NAME
+    - gsutil -m cp -R public/* gs://$BUCKET_NAME
+
+deploy_staging:
   only:
     - master
   dependencies: 
     - build app
   stage: deploy
   image: docker:latest
+  environment:
+    name: staging
   script:
     # Install CA certs, openssl to https downloads, python for gcloud sdk
-#    - apk add --update make ca-certificates openssl python
-#    - update-ca-certificates
+    - apk add --update make ca-certificates openssl python3
+    - update-ca-certificates
+
+    # Download and install Google Cloud SDK
+    - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
+    - tar zxvf google-cloud-sdk.tar.gz && ./google-cloud-sdk/install.sh --usage-reporting=false --path-update=true
+    - PATH="google-cloud-sdk/bin:${PATH}"
+    - gcloud --quiet components update
+
+    - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
+    - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+
+    - gsutil -m cp -R public/* gs://$GCP_BUCKET
+
+
+deploy_prod:
+  only:
+    - master
+  dependencies: 
+    - build app
+  stage: deploy
+  image: docker:latest
+  when: manual
+  environment:
+    name: prod
+  script:
+    # Install CA certs, openssl to https downloads, python for gcloud sdk
+    - apk add --update make ca-certificates openssl python3
+    - update-ca-certificates
 
     # Download and install Google Cloud SDK
     - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
