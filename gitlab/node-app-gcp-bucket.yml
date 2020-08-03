@@ -68,6 +68,38 @@ prepare_staging:
     - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
     - gcloud config set project $GCP_PROJECT_ID
     - export TF_VAR_GCP_SERVICE_KEY="${HOME}/gcloud-service-key.json"
+    - export TF_VAR_GCP_BUCKET=$GCP_BUCKET
+    - export TF_VAR_GCP_PROJECT_NAME=$GCP_PROJECT_ID
+    - cd terraform
+    - gitlab-terraform init
+    - gitlab-terraform plan
+    - gitlab-terraform apply
+
+
+prepare_prod:
+  only:
+    - master
+  image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+  stage: prepare
+  environment:
+    name: prod
+  script:
+    # Install CA certs, openssl to https downloads, python for gcloud sdk
+    - apk add --update make ca-certificates openssl python3
+    - update-ca-certificates
+
+    # Download and install Google Cloud SDK
+    - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
+    - tar zxvf google-cloud-sdk.tar.gz && ./google-cloud-sdk/install.sh --usage-reporting=false --path-update=true
+    - PATH="google-cloud-sdk/bin:${PATH}"
+    - gcloud --quiet components update
+
+    - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
+    - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+    - export TF_VAR_GCP_SERVICE_KEY="${HOME}/gcloud-service-key.json"
+    - export TF_VAR_GCP_BUCKET=$GCP_BUCKET
+    - export TF_VAR_GCP_PROJECT_NAME=$GCP_PROJECT_ID
     - cd terraform
     - gitlab-terraform init
     - gitlab-terraform plan
@@ -82,6 +114,7 @@ deploy_staging:
   image: docker:latest
   environment:
     name: staging
+    url: https://$APP_URL
   script:
     # Install CA certs, openssl to https downloads, python for gcloud sdk
     - apk add --update make ca-certificates openssl python3
@@ -110,6 +143,7 @@ deploy_prod:
   when: manual
   environment:
     name: prod
+    url: https://$APP_URL
   script:
     # Install CA certs, openssl to https downloads, python for gcloud sdk
     - apk add --update make ca-certificates openssl python3
