@@ -15,7 +15,7 @@ build app:
     # UNCOMMENT THE FOLLOWING LINE AND UPDATE IF BUILD DIR IS NOT /PUBLIC
     #- mv dist public
 
-prepare_staging:
+prepare_review:
   except:
     - master
   image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
@@ -26,13 +26,13 @@ prepare_staging:
     # Install CA certs, openssl to https downloads, python for gcloud sdk
     - apk add --update make ca-certificates openssl python3
     - update-ca-certificates
-    - BUCKET_NAME=${$CI_COMMIT_REF_NAME///-}
 
     # Download and install Google Cloud SDK
     - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
     - tar zxvf google-cloud-sdk.tar.gz && ./google-cloud-sdk/install.sh --usage-reporting=false --path-update=true
     - PATH="google-cloud-sdk/bin:${PATH}"
     - gcloud --quiet components update
+    - BUCKET_NAME==$(echo $CI_COMMIT_REF_NAME | sed -e 's/\//-/g')
 
     - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
     - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
