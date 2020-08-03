@@ -69,6 +69,7 @@ prepare_staging:
     - gcloud config set project $GCP_PROJECT_ID
     - cd terraform
     - gitlab-terraform init
+    - gitlab-terraform plan
     - gitlab-terraform apply
 
 deploy_staging:
