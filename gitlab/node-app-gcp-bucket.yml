@@ -65,7 +65,7 @@ deploy_review:
     - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
     - tar zxvf google-cloud-sdk.tar.gz && ./google-cloud-sdk/install.sh --usage-reporting=false --path-update=true
     - PATH="google-cloud-sdk/bin:${PATH}"
-    - BUCKET_NAME=${$CI_COMMIT_REF_NAME///-}
+    - BUCKET_NAME==$(echo $CI_COMMIT_REF_NAME | sed -e 's/\//-/g')
     - gcloud --quiet components update
 
     - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
