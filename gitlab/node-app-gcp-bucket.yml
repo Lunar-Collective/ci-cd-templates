@@ -67,7 +67,6 @@ deploy_review:
     - PATH="google-cloud-sdk/bin:${PATH}"
     - BUCKET_NAME==$(echo $CI_COMMIT_REF_NAME | sed -e 's/\//-/g')
     - gcloud --quiet components update
-
     - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
     - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
     - gcloud config set project $GCP_PROJECT_ID
