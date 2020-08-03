@@ -100,6 +100,8 @@ prepare_prod:
     - export TF_VAR_GCP_SERVICE_KEY="${HOME}/gcloud-service-key.json"
     - export TF_VAR_GCP_BUCKET=$GCP_BUCKET
     - export TF_VAR_GCP_PROJECT_NAME=$GCP_PROJECT_ID
+    - export TF_VAR_APP_DOMAIN=$APP_DOMAIN
+    - export TF_VAR_DNS_ZONE_NAME=$DNS_ZONE_NAME
     - cd terraform
     - gitlab-terraform init
     - gitlab-terraform plan
@@ -114,7 +116,7 @@ deploy_staging:
   image: docker:latest
   environment:
     name: staging
-    url: https://$APP_URL
+    url: https://$APP_DOMAIN
   script:
     # Install CA certs, openssl to https downloads, python for gcloud sdk
     - apk add --update make ca-certificates openssl python3
