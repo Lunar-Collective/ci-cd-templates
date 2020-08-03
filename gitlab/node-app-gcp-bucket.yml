@@ -1,3 +1,7 @@
+stages:
+  - build
+  - prepare
+  - deploy
 
 build app:
   image: node:12
@@ -11,6 +15,36 @@ build app:
     # UNCOMMENT THE FOLLOWING LINE AND UPDATE IF BUILD DIR IS NOT /PUBLIC
     #- mv dist public
 
+prepare_staging:
+  except:
+    - master
+  image: registry.gitlab.com/gitlab-org/terraform-images/stable:latest
+  stage: prepare
+  environment:
+    name: staging
+  script:
+    # Install CA certs, openssl to https downloads, python for gcloud sdk
+    - apk add --update make ca-certificates openssl python3
+    - update-ca-certificates
+    - BUCKET_NAME=${$CI_COMMIT_REF_NAME///-}
+
+    # Download and install Google Cloud SDK
+    - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
+    - tar zxvf google-cloud-sdk.tar.gz && ./google-cloud-sdk/install.sh --usage-reporting=false --path-update=true
+    - PATH="google-cloud-sdk/bin:${PATH}"
+    - gcloud --quiet components update
+
+    - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
+    - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
+    - gcloud config set project $GCP_PROJECT_ID
+    - export TF_VAR_GCP_SERVICE_KEY="${HOME}/gcloud-service-key.json"
+    - export TF_VAR_website_domain_name=$BUCKET_NAME.$APP_DOMAIN
+    - export TF_VAR_project=$GCP_PROJECT_ID
+    - export TF_VAR_gcp_service_key=$GCP_SERVICE_KEY
+    - cd terraform
+    - gitlab-terraform init
+    - gitlab-terraform plan
+    - gitlab-terraform apply
 
 deploy_review:
   except:
@@ -21,6 +55,7 @@ deploy_review:
   image: docker:latest
   environment:
     name: staging
+    url: https://$BUCKET_NAME.$APP_DOMAIN
   script:
     # Install CA certs, openssl to https downloads, python for gcloud sdk
     - apk add --update make ca-certificates openssl python3
@@ -30,16 +65,14 @@ deploy_review:
     - wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
     - tar zxvf google-cloud-sdk.tar.gz && ./google-cloud-sdk/install.sh --usage-reporting=false --path-update=true
     - PATH="google-cloud-sdk/bin:${PATH}"
-    - BUCKET_NAME=${$CI_COMMIT_REF_NAME///_}
+    - BUCKET_NAME=${$CI_COMMIT_REF_NAME///-}
     - gcloud --quiet components update
 
     - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
     - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
     - gcloud config set project $GCP_PROJECT_ID
-    - gsutil mb -p $GCP_PROJECT_ID -c standard -l us-east1 -b on gs://$BUCKET_NAME
-    - gsutil iam ch allUsers:objectViewer gs://$BUCKET_NAME
-    - gsutil -m cp -R public/* gs://$BUCKET_NAME
-    - gsutil web set -m index.html -e 404.html gs://$BUCKET_NAME
+    - gsutil -m cp -R public/* gs://$BUCKET_NAME.$APP_DOMAIN
+    - gsutil web set -m index.html -e 404.html gs://$BUCKET_NAME.$APP_DOMAIN
 
 deploy_staging:
   only:
@@ -79,7 +112,7 @@ deploy_prod:
   when: manual
   environment:
     name: prod
-    url: https://$APP_URL
+    url: https://$APP_DOMAIN
   script:
     # Install CA certs, openssl to https downloads, python for gcloud sdk
     - apk add --update make ca-certificates openssl python3
@@ -94,5 +127,5 @@ deploy_prod:
     - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
     - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
     - gcloud config set project $GCP_PROJECT_ID
-    - gsutil -m cp -R public/* gs://$GCP_BUCKET
-    - gsutil web set -m index.html -e 404.html gs://$GCP_BUCKET
+    - gsutil -m cp -R public/* gs://$APP_DOMAIN
+    - gsutil web set -m index.html -e 404.html gs://$APP_DOMAIN
