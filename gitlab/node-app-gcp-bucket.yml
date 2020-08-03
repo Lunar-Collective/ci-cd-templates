@@ -98,7 +98,7 @@ prepare_prod:
     - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
     - gcloud config set project $GCP_PROJECT_ID
     - export TF_VAR_GCP_SERVICE_KEY="${HOME}/gcloud-service-key.json"
-    - export TF_VAR_GCP_BUCKET=$GCP_BUCKET
+    - export TF_VAR_BUCKET_NAME=$GCP_BUCKET
     - export TF_VAR_GCP_PROJECT_NAME=$GCP_PROJECT_ID
     - export TF_VAR_APP_DOMAIN=$APP_DOMAIN
     - export TF_VAR_DNS_ZONE_NAME=$DNS_ZONE_NAME
