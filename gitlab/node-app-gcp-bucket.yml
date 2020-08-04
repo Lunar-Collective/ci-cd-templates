@@ -97,6 +97,7 @@ deploy_staging:
     - echo $GCP_SERVICE_KEY > ${HOME}/gcloud-service-key.json
     - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
     - gcloud config set project $GCP_PROJECT_ID
+    - echo $APP_DOMAIN
     - gsutil -m cp -R public/* gs://$APP_DOMAIN
     - gsutil web set -m index.html -e 404.html gs://$APP_DOMAIN
 
