@@ -100,6 +100,7 @@ deploy_staging:
     - echo $APP_DOMAIN
     - gsutil -m cp -R public/* gs://$APP_DOMAIN
     - gsutil web set -m index.html -e 404.html gs://$APP_DOMAIN
+    - gsutil iam ch allUsers:objectViewer gs://$APP_DOMAIN
 
 
 deploy_prod:
@@ -128,4 +129,5 @@ deploy_prod:
     - gcloud auth activate-service-account --key-file ${HOME}/gcloud-service-key.json
     - gcloud config set project $GCP_PROJECT_ID
     - gsutil -m cp -R public/* gs://$APP_DOMAIN
+    - gsutil iam ch allUsers:objectViewer gs://$APP_DOMAIN
     - gsutil web set -m index.html -e 404.html gs://$APP_DOMAIN
